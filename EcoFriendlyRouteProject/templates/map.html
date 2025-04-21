@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Eco-Friendly Route</title>
+    <style>
+        #map {
+            height: 90vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h2>Eco-Friendly Route</h2>
+    <div id="map"></div>
+
+    <script>
+        const routeData = {{ route_data|safe }};  // Passed from Flask
+        const steps = routeData.routes[0].legs[0].steps;
+
+        function initMap() {
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 10,
+                center: steps[0].start_location,
+            });
+
+            const routePath = [];
+            steps.forEach(step => {
+                const decodedPath = google.maps.geometry.encoding.decodePath(step.polyline.points);
+                routePath.push(...decodedPath);
+            });
+
+            // Draw the full route as a polyline
+            const routePolyline = new google.maps.Polyline({
+                path: routePath,
+                geodesic: true,
+                strokeColor: "#34a853",
+                strokeOpacity: 0.8,
+                strokeWeight: 5,
+            });
+            routePolyline.setMap(map);
+
+            // Add start and end markers
+            new google.maps.Marker({
+                position: steps[0].start_location,
+                map,
+                label: "S",
+                title: "Start Point"
+            });
+
+            new google.maps.Marker({
+                position: steps[steps.length - 1].end_location,
+                map,
+                label: "E",
+                title: "End Point"
+            });
+        }
+    </script>
+
+    <!-- Load Google Maps JS API (replace `YOUR_API_KEY`) -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAg3FyW8z4g-XJQhwoH-pbC2tlFa8c7Crk
+        &libraries=geometry&callback=initMap">
+    </script>
+</body>
+</html>

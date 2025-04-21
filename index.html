@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-friendly Route Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h2 {
+            text-align: center;
+            padding: 20px;
+            background-color: #4CAF50;
+            color: white;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px 20px;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px 0;
+        }
+        .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 10px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        .form-item {
+            display: flex;
+            flex-direction: column;
+            width: calc(50% - 10px);
+            position: relative;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+            border-radius: 5px;
+        }
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            border-bottom: 1px solid #ccc;
+        }
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            h2 {
+                font-size: 24px;
+            }
+            .form-group {
+                flex-direction: column;
+            }
+            .form-item {
+                width: 100%;
+            }
+            #map {
+                height: 400px;
+            }
+        }
+        @media (max-width: 480px) {
+            #map {
+                height: 300px;
+            }
+        }
+        /* Adding the SVG icon inside the input field */
+        .form-item input {
+            padding-left: 40px;
+        }
+        .svg-icon {
+            position: absolute;
+            top: 35px;
+            left: 10px;
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAg3FyW8z4g-XJQhwoH-pbC2tlFa8c7Crk&libraries=places"></script> <!-- Replace YOUR_API_KEY with your actual API key -->
+</head>
+<body onload="initMap()">
+    <h2>Eco-friendly Route Finder</h2>
+    <div class="container">
+        <div class="form-group">
+            <div class="form-item">
+                <label for="source">Source:</label>
+                <input type="text" id="source" placeholder="Enter source" />
+                <!-- SVG Icon -->
+                <svg class="svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="10" r="3"></circle>
+                    <path d="M12 2v2"></path>
+                    <path d="M12 20v2"></path>
+                    <path d="M4.93 4.93l1.42 1.42"></path>
+                    <path d="M18.36 18.36l1.42 1.42"></path>
+                    <path d="M2 12h2"></path>
+                    <path d="M20 12h2"></path>
+                    <path d="M4.93 19.07l1.42-1.42"></path>
+                    <path d="M18.36 5.64l1.42-1.42"></path>
+                </svg>
+            </div>
+            <div class="form-item">
+                <label for="destination">Destination:</label>
+                <input type="text" id="destination" placeholder="Enter destination" />
+            </div>
+        </div>
+
+        <button onclick="calculateRoute()">Find Route</button>
+        <button onclick="useCurrentLocation()">Use Current Location</button>
+        
+        <div class="dropdown">
+            <button>Search Nearby</button>
+            <div class="dropdown-content">
+                <a href="#" onclick="findNearby('hospital')">Nearby Hospitals</a>
+                <a href="#" onclick="findNearby('store')">Nearby Shops</a>
+                <a href="#" onclick="findNearby('gas_station')">Nearby Petrol Pumps</a>
+            </div>
+        </div>
+
+        <button onclick="drawEcoFriendlyRoute()">Show Eco-Friendly Route</button>
+        <div id="map"></div>
+    </div>
+
+    <script>
+        let map, directionsService, directionsRenderer, placesService, routeRenderers = [];
+        let markers = []; // Store all the markers
+        let currentLocationMarker = null;
+        const currentLocationIcon = {
+            path: "M12 2C8.1 2 5 5.1 5 9c0 4.5 7 13 7 13s7-8.5 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5 14.5 7.6 14.5 9 13.4 11.5 12 11.5z",
+            fillColor: '#007bff',
+            fillOpacity: 1,
+            strokeWeight: 1,
+            scale: 1.5,
+            anchor: new google.maps.Point(12, 24)
+        };
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 19.0330, lng: 73.0297 }, // Navi Mumbai, India
+                zoom: 12
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true
+            });
+
+            placesService = new google.maps.places.PlacesService(map);
+        }
+
+        function calculateRoute() {
+            const source = document.getElementById('source').value;
+            const destination = document.getElementById('destination').value;
+
+            if (!source || !destination) {
+                alert('Please enter both source and destination');
+                return;
+            }
+
+            // Clear previous routes
+            routeRenderers.forEach(renderer => renderer.setMap(null));
+            routeRenderers = [];
+
+            const request = {
+                origin: source,
+                destination: destination,
+                travelMode: google.maps.TravelMode.DRIVING,
+                provideRouteAlternatives: true
+            };
+
+            directionsService.route(request, function(result, status) {
+                if (status === google.maps.DirectionsStatus.OK) {
+                    const routes = result.routes;
+
+                    // Ensure at least 5 routes are shown if available
+                    const maxRoutes = Math.min(routes.length, 5);
+                    console.log(`Number of routes available: ${routes.length}`);
+
+                    for (let index = 0; index < maxRoutes; index++) {
+                        const color = index === 0 ? 'blue' : 'yellow';
+                        const strokeWeight = index === 0 ? 3 : 3;
+
+                        const renderer = new google.maps.DirectionsRenderer({
+                            map: map,
+                            directions: result,
+                            routeIndex: index,
+                            polylineOptions: {
+                                strokeColor: color,
+                                strokeWeight: strokeWeight
+                            },
+                            suppressMarkers: true
+                        });
+
+                        routeRenderers.push(renderer);
+
+                        // Log waypoints for the first route
+                        if (index === 0) {
+                            const legs = routes[index].legs; // Get legs of the first route
+                            legs.forEach(leg => {
+                                console.log(`From: ${leg.start_address} To: ${leg.end_address}`);
+                                console.log(`Distance: ${leg.distance.text}, Duration: ${leg.duration.text}`);
+
+                                // Log waypoints
+                                leg.steps.forEach(step => {
+                                    console.log(`Waypoint: ${step.start_location.lat()}, ${step.start_location.lng()}`);
+                                });
+                            });
+                        }
+                    }
+                } else {
+                    alert('Directions request failed due to ' + status);
+                }
+            });
+        }
+
+        function useCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const location = { lat: lat, lng: lng };
+
+                    document.getElementById('source').value = `${lat}, ${lng}`;
+
+                    if (currentLocationMarker) {
+                        currentLocationMarker.setMap(null); // Remove previous marker
+                    }
+
+                    currentLocationMarker = new google.maps.Marker({
+                        position: location,
+                        map: map,
+                        icon: currentLocationIcon
+                    });
+
+                    map.setCenter(location);
+                }, function() {
+                    alert("Error: Unable to retrieve your location.");
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function clearMarkers() {
+            markers.forEach(marker => marker.setMap(null)); // Remove all markers from the map
+            markers = []; // Reset the markers array
+        }
+
+        function findNearby(type) {
+            clearMarkers(); // Clear existing markers before adding new ones
+
+            const bounds = map.getBounds();
+            const request = {
+                bounds: bounds,
+                type: [type],
+                radius: 5000
+            };
+
+            const icons = {
+                hospital: {
+                    url: 'https://maps.google.com/mapfiles/kml/shapes/hospitals.png',
+                    scaledSize: new google.maps.Size(25, 25) // Smaller size for the marker
+                },
+                store: {
+                    url: 'https://maps.google.com/mapfiles/kml/shapes/shopping.png',
+                    scaledSize: new google.maps.Size(25, 25)
+                },
+                gas_station: {
+                    url: 'https://maps.google.com/mapfiles/kml/shapes/gas_stations.png',
+                    scaledSize: new google.maps.Size(25, 25)
+                }
+            };
+
+            placesService.nearbySearch(request, function(results, status) {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    results.forEach(place => {
+                        const marker = new google.maps.Marker({
+                            position: place.geometry.location,
+                            map: map,
+                            icon: icons[type]
+                        });
+                        markers.push(marker); // Add marker to the array
+
+                        const infoWindow = new google.maps.InfoWindow({
+                            content: `<b>${place.name || 'Unknown'}</b><br>${type}`
+                        });
+                        marker.addListener('click', function() {
+                            infoWindow.open(map, marker);
+                        });
+                    });
+                } else {
+                    alert('Failed to find nearby places.');
+                }
+            });
+        }
+
+        function drawEcoFriendlyRoute() {
+            const ecoRoute = [
+                { lat: 19.2118761, lng: 73.123147 },
+                { lat: 19.1070628, lng: 73.0230581 },
+                { lat: 19.0961849, lng: 73.0226564 },
+                { lat: 19.0657881, lng: 73.0192286 },
+                { lat: 18.9660115, lng: 73.0359705 },
+                { lat: 18.8786769, lng: 72.9391714 },
+                { lat: 18.8808288, lng: 72.9289773 },
+                { lat: 18.8772, lng: 72.9283 }
+            ];
+
+            const ecoFriendlyRoute = new google.maps.Polyline({
+                path: ecoRoute,
+                geodesic: true,
+                strokeColor: '#00FF00', // Green color
+                strokeOpacity: 1.0,
+                strokeWeight: 5 // Increase thickness here (adjust the number as needed)
+            });
+
+            ecoFriendlyRoute.setMap(map);
+            map.setCenter(ecoRoute[0]); // Center the map on the first waypoint
+        }
+    </script>
+</body>
+</html>

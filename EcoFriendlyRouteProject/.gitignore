@@ -1,0 +1,29 @@
+# Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+*.env
+
+# IDEs and editors (example: Visual Studio Code)
+.vscode/
+.idea/
+
+# macOS Finder
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# PyCharm
+*.iml
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Python compiled files (optimized)
+*.pyc
